@@ -1,0 +1,6 @@
+Django==5.2.1
+django-cors-headers==4.7.0
+Pillow==11.2.1
+opencv-python==4.11.0.86
+numpy==2.2.6
+scikit-image==0.25.2 

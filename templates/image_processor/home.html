@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Image Editor - Professional Image Enhancement</title>
+    {% load static %}
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary-color: #667eea;
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --secondary-color: #f093fb;
+            --secondary-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            --success-color: #4ade80;
+            --danger-color: #f87171;
+            --dark-color: #1f2937;
+            --light-color: #f8fafc;
+            --border-radius: 12px;
+            --shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            --shadow-hover: 0 20px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .main-container {
+            background: white;
+            margin: 2rem auto;
+            max-width: 1400px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
+
+        .header {
+            background: var(--primary-gradient);
+            color: white;
+            padding: 2rem;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="1" fill="rgba(255,255,255,0.1)"/></svg>') repeat;
+            animation: float 20s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(180deg); }
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            position: relative;
+            z-index: 1;
+        }
+
+        .content-area {
+            padding: 3rem;
+        }
+
+        .upload-section {
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            border: 2px dashed #cbd5e1;
+            border-radius: var(--border-radius);
+            padding: 3rem;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .upload-section:hover {
+            border-color: var(--primary-color);
+            background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+            transform: translateY(-2px);
+        }
+
+        .upload-section.dragover {
+            border-color: var(--primary-color);
+            background: linear-gradient(135deg, #ede9fe 0%, #ddd6fe 100%);
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            font-size: 4rem;
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .upload-section:hover .upload-icon {
+            transform: scale(1.1);
+        }
+
+        .mode-selector {
+            margin: 2rem 0;
+        }
+
+        .mode-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .mode-card {
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-radius: var(--border-radius);
+            padding: 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .mode-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.8), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .mode-card:hover::before {
+            left: 100%;
+        }
+
+        .mode-card:hover {
+            border-color: var(--primary-color);
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-hover);
+        }
+
+        .mode-card.selected {
+            border-color: var(--primary-color);
+            background: linear-gradient(135deg, #f8fafc 0%, #ede9fe 100%);
+            box-shadow: var(--shadow);
+        }
+
+        .mode-icon {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            display: block;
+        }
+
+        .ai-enhancer { color: #8b5cf6; }
+        .gamma-clahe { color: #06b6d4; }
+        .shadow-fight { color: #f59e0b; }
+        .grayscale { color: #6b7280; }
+
+        .mode-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--dark-color);
+        }
+
+        .mode-description {
+            font-size: 0.9rem;
+            color: #64748b;
+            line-height: 1.4;
+        }
+
+        .process-btn {
+            background: var(--primary-gradient);
+            border: none;
+            color: white;
+            padding: 1rem 3rem;
+            border-radius: var(--border-radius);
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .process-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-hover);
+        }
+
+        .process-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .process-btn .spinner {
+            display: none;
+        }
+
+        .process-btn.loading .spinner {
+            display: inline-block;
+            margin-right: 0.5rem;
+        }
+
+        .result-section {
+            margin-top: 3rem;
+            padding-top: 3rem;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .image-comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .image-container {
+            background: #f8fafc;
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            transition: all 0.3s ease;
+        }
+
+        .image-container:hover {
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-hover);
+        }
+
+        .image-header {
+            background: var(--dark-color);
+            color: white;
+            padding: 1rem;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .image-content {
+            padding: 1rem;
+            text-align: center;
+        }
+
+        .preview-image {
+            max-width: 100%;
+            max-height: 400px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .download-btn {
+            background: var(--secondary-gradient);
+            border: none;
+            color: white;
+            padding: 0.75rem 2rem;
+            border-radius: var(--border-radius);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 1rem;
+        }
+
+        .download-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow);
+        }
+
+        .alert {
+            border-radius: var(--border-radius);
+            border: none;
+            box-shadow: var(--shadow);
+        }
+
+        .progress-container {
+            display: none;
+            margin: 2rem 0;
+        }
+
+        .progress {
+            height: 8px;
+            border-radius: 4px;
+            overflow: hidden;
+            background: #e2e8f0;
+        }
+
+        .progress-bar {
+            background: var(--primary-gradient);
+            transition: width 0.3s ease;
+        }
+
+        @media (max-width: 768px) {
+            .main-container {
+                margin: 1rem;
+            }
+            
+            .content-area {
+                padding: 2rem;
+            }
+            
+            .image-comparison {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .mode-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .floating-shapes {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .shape {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            animation: float-shapes 20s ease-in-out infinite;
+        }
+
+        .shape:nth-child(1) { width: 100px; height: 100px; top: 10%; left: 10%; animation-delay: 0s; }
+        .shape:nth-child(2) { width: 150px; height: 150px; top: 70%; left: 80%; animation-delay: 5s; }
+        .shape:nth-child(3) { width: 80px; height: 80px; top: 40%; left: 90%; animation-delay: 10s; }
+
+        @keyframes float-shapes {
+            0%, 100% { transform: translateY(0px) rotate(0deg); opacity: 0.3; }
+            50% { transform: translateY(-30px) rotate(180deg); opacity: 0.8; }
+        }
+    </style>
+</head>
+<body>
+    <div class="floating-shapes">
+        <div class="shape"></div>
+        <div class="shape"></div>
+        <div class="shape"></div>
+    </div>
+
+    <div class="main-container">
+        <div class="header">
+            <h1><i class="fas fa-magic"></i> AI Image Editor</h1>
+            <p>Professional image enhancement powered by advanced algorithms</p>
+        </div>
+
+        <div class="content-area">
+            <!-- Upload Section -->
+            <div class="upload-section" id="uploadSection">
+                <div class="upload-icon">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                </div>
+                <h3>Drag & Drop Your Image Here</h3>
+                <p>or <strong>click to browse</strong> - Supports JPG, PNG, GIF (Max 10MB)</p>
+                <input type="file" id="imageInput" accept="image/*" style="display: none;">
+            </div>
+
+            <!-- Mode Selection -->
+            <div class="mode-selector">
+                <h3><i class="fas fa-cogs"></i> Choose Processing Mode</h3>
+                <div class="mode-grid" id="modeGrid">
+                    <div class="mode-card" data-mode="ai_enhancer">
+                        <i class="mode-icon ai-enhancer fas fa-robot"></i>
+                        <div class="mode-title">AI Enhancer</div>
+                        <div class="mode-description">Advanced multi-step upscaling with edge preservation, denoising, and sharpening algorithms</div>
+                    </div>
+                    <div class="mode-card" data-mode="gamma_clahe">
+                        <i class="mode-icon gamma-clahe fas fa-adjust"></i>
+                        <div class="mode-title">Gamma CLAHE</div>
+                        <div class="mode-description">Advanced gamma correction with CLAHE, local contrast enhancement, and morphological operations</div>
+                    </div>
+                    <div class="mode-card" data-mode="shadow_fight">
+                        <i class="mode-icon shadow-fight fas fa-sun"></i>
+                        <div class="mode-title">Shadow Fight</div>
+                        <div class="mode-description">Intelligent shadow detection and local adaptive enhancement for balanced lighting</div>
+                    </div>
+                    <div class="mode-card" data-mode="grayscale">
+                        <i class="mode-icon grayscale fas fa-palette"></i>
+                        <div class="mode-title">Grayscale</div>
+                        <div class="mode-description">Advanced grayscale conversion with luminance weighting and contrast enhancement</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Process Button -->
+            <div class="text-center">
+                <button class="process-btn" id="processBtn" disabled>
+                    <span class="spinner spinner-border spinner-border-sm" role="status"></span>
+                    <i class="fas fa-magic"></i> Process Image
+                </button>
+            </div>
+
+            <!-- Progress Bar -->
+            <div class="progress-container" id="progressContainer">
+                <div class="progress">
+                    <div class="progress-bar" role="progressbar" style="width: 0%"></div>
+                </div>
+                <div class="text-center mt-2">
+                    <small class="text-muted">Processing your image...</small>
+                </div>
+            </div>
+
+            <!-- Alert Messages -->
+            <div id="alertContainer"></div>
+
+            <!-- Results Section -->
+            <div class="result-section" id="resultSection" style="display: none;">
+                <h3><i class="fas fa-eye"></i> Results</h3>
+                <div class="image-comparison">
+                    <div class="image-container">
+                        <div class="image-header">
+                            <i class="fas fa-image"></i> Original Image
+                        </div>
+                        <div class="image-content">
+                            <img id="originalPreview" class="preview-image" alt="Original">
+                        </div>
+                    </div>
+                    <div class="image-container">
+                        <div class="image-header">
+                            <i class="fas fa-magic"></i> Processed Image
+                        </div>
+                        <div class="image-content">
+                            <img id="processedPreview" class="preview-image" alt="Processed">
+                            <br>
+                            <button class="download-btn" id="downloadBtn">
+                                <i class="fas fa-download"></i> Download Result
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        let selectedMode = null;
+        let uploadedFile = null;
+        let processedRecordId = null;
+
+        // DOM Elements
+        const uploadSection = document.getElementById('uploadSection');
+        const imageInput = document.getElementById('imageInput');
+        const modeGrid = document.getElementById('modeGrid');
+        const processBtn = document.getElementById('processBtn');
+        const progressContainer = document.getElementById('progressContainer');
+        const alertContainer = document.getElementById('alertContainer');
+        const resultSection = document.getElementById('resultSection');
+        const originalPreview = document.getElementById('originalPreview');
+        const processedPreview = document.getElementById('processedPreview');
+        const downloadBtn = document.getElementById('downloadBtn');
+
+        // Upload section click handler
+        uploadSection.addEventListener('click', () => {
+            imageInput.click();
+        });
+
+        // File input change handler
+        imageInput.addEventListener('change', handleFileSelect);
+
+        // Drag and drop handlers
+        uploadSection.addEventListener('dragover', handleDragOver);
+        uploadSection.addEventListener('dragleave', handleDragLeave);
+        uploadSection.addEventListener('drop', handleDrop);
+
+        // Mode selection handlers
+        modeGrid.addEventListener('click', handleModeSelect);
+
+        // Process button handler
+        processBtn.addEventListener('click', processImage);
+
+        // Download button handler
+        downloadBtn.addEventListener('click', downloadImage);
+
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                validateAndSetFile(file);
+            }
+        }
+
+        function handleDragOver(event) {
+            event.preventDefault();
+            uploadSection.classList.add('dragover');
+        }
+
+        function handleDragLeave(event) {
+            event.preventDefault();
+            uploadSection.classList.remove('dragover');
+        }
+
+        function handleDrop(event) {
+            event.preventDefault();
+            uploadSection.classList.remove('dragover');
+            
+            const files = event.dataTransfer.files;
+            if (files.length > 0) {
+                validateAndSetFile(files[0]);
+            }
+        }
+
+        function validateAndSetFile(file) {
+            // Validate file type
+            if (!file.type.startsWith('image/')) {
+                showAlert('Please select a valid image file.', 'danger');
+                return;
+            }
+
+            // Validate file size (10MB)
+            if (file.size > 10 * 1024 * 1024) {
+                showAlert('File size must be less than 10MB.', 'danger');
+                return;
+            }
+
+            uploadedFile = file;
+            
+            // Show preview
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                originalPreview.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+
+            // Update UI
+            uploadSection.innerHTML = `
+                <div class="upload-icon">
+                    <i class="fas fa-check-circle text-success"></i>
+                </div>
+                <h3>Image Selected</h3>
+                <p><strong>${file.name}</strong> (${(file.size / 1024 / 1024).toFixed(2)} MB)</p>
+                <p><small>Click to select a different image</small></p>
+            `;
+
+            updateProcessButton();
+            showAlert('Image uploaded successfully!', 'success');
+        }
+
+        function handleModeSelect(event) {
+            const card = event.target.closest('.mode-card');
+            if (!card) return;
+
+            // Remove previous selection
+            document.querySelectorAll('.mode-card').forEach(c => c.classList.remove('selected'));
+            
+            // Add selection to clicked card
+            card.classList.add('selected');
+            selectedMode = card.dataset.mode;
+            
+            updateProcessButton();
+        }
+
+        function updateProcessButton() {
+            if (uploadedFile && selectedMode) {
+                processBtn.disabled = false;
+            } else {
+                processBtn.disabled = true;
+            }
+        }
+
+        async function processImage() {
+            if (!uploadedFile || !selectedMode) {
+                showAlert('Please select an image and processing mode.', 'warning');
+                return;
+            }
+
+            // Show loading state
+            processBtn.classList.add('loading');
+            processBtn.disabled = true;
+            progressContainer.style.display = 'block';
+            
+            // Animate progress bar
+            let progress = 0;
+            const progressBar = document.querySelector('.progress-bar');
+            const progressInterval = setInterval(() => {
+                progress += Math.random() * 10;
+                if (progress > 90) progress = 90;
+                progressBar.style.width = progress + '%';
+            }, 200);
+
+            try {
+                const formData = new FormData();
+                formData.append('image', uploadedFile);
+                formData.append('mode', selectedMode);
+
+                const response = await fetch('/process/', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Complete progress
+                    clearInterval(progressInterval);
+                    progressBar.style.width = '100%';
+                    
+                    setTimeout(() => {
+                        progressContainer.style.display = 'none';
+                        progressBar.style.width = '0%';
+                    }, 500);
+
+                    // Show results
+                    processedPreview.src = data.processed_image;
+                    processedRecordId = data.record_id;
+                    resultSection.style.display = 'block';
+                    
+                    // Scroll to results
+                    resultSection.scrollIntoView({ behavior: 'smooth' });
+                    
+                    showAlert('Image processed successfully!', 'success');
+                } else {
+                    throw new Error(data.error || 'Processing failed');
+                }
+            } catch (error) {
+                clearInterval(progressInterval);
+                progressContainer.style.display = 'none';
+                progressBar.style.width = '0%';
+                showAlert('Error processing image: ' + error.message, 'danger');
+            } finally {
+                processBtn.classList.remove('loading');
+                processBtn.disabled = false;
+            }
+        }
+
+        function downloadImage() {
+            if (processedRecordId) {
+                window.location.href = `/download/${processedRecordId}/`;
+            }
+        }
+
+        function showAlert(message, type) {
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type} alert-dismissible fade show`;
+            alert.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            
+            alertContainer.appendChild(alert);
+            
+            // Auto-dismiss after 5 seconds
+            setTimeout(() => {
+                if (alert.parentNode) {
+                    alert.remove();
+                }
+            }, 5000);
+        }
+    </script>
+</body>
+</html> 
