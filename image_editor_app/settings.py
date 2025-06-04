@@ -123,9 +123,9 @@ STATICFILES_DIRS = [
     BASE_DIR / 'static',
 ]
 
-# Media files configuration
-MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+# Temporary files configuration (replaces permanent media storage)
+TEMP_FILES_DIR = BASE_DIR / 'temp'
+TEMP_FILE_CLEANUP_HOURS = 2
 
 # CORS settings
 CORS_ALLOW_ALL_ORIGINS = True  # Only for development
@@ -134,6 +134,11 @@ CORS_ALLOW_CREDENTIALS = True
 # File upload settings
 FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
 DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
+
+# GPU and AI Model settings
+USE_GPU = True  # Enable GPU acceleration for RealESRGAN
+MODEL_CACHE_DIR = BASE_DIR / 'models'
+REALESRGAN_MODEL_PATH = BASE_DIR / 'realesr-general-x4v3.pth'
 
 # Logging configuration
 LOGGING = {
