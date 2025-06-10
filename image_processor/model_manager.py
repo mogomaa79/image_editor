@@ -147,30 +147,6 @@ class ImageEnhancementManager:
             
         except Exception as e:
             logger.error(f"Error in RealESRGAN super-resolution: {e}")
-            return self._fallback_enhancement(image, scale)
-    
-    def _fallback_enhancement(self, image, scale):
-        """Fallback enhancement using basic OpenCV when RealESRGAN is not available"""
-        try:
-            if isinstance(image, Image.Image):
-                image = np.array(image)
-            
-            # Basic bicubic upscaling
-            h, w = image.shape[:2]
-            enhanced = cv2.resize(image, (w * scale, h * scale), interpolation=cv2.INTER_CUBIC)
-            
-            # Apply basic sharpening
-            kernel = np.array([[-1,-1,-1], [-1,9,-1], [-1,-1,-1]])
-            sharpened = cv2.filter2D(enhanced, -1, kernel)
-            
-            # Blend original and sharpened
-            result = cv2.addWeighted(enhanced, 0.7, sharpened, 0.3, 0)
-            
-            return np.clip(result, 0, 255).astype(np.uint8)
-            
-        except Exception as e:
-            logger.error(f"Error in fallback enhancement: {e}")
-            return image
     
     def advanced_gamma_clahe(self, image, gamma=1.3, clip_limit=3.0):
         """
@@ -215,7 +191,7 @@ class ImageEnhancementManager:
             logger.error(f"Error in advanced gamma CLAHE: {e}")
             return image
     
-    def advanced_shadow_fight(self, image, alpha=1.4, beta=40, shadow_enhance=True):
+    def advanced_shadow_fight(self, image, alpha=1.4, beta=30):
         """
         Advanced shadow fighting with adaptive enhancement
         """
@@ -225,42 +201,13 @@ class ImageEnhancementManager:
             
             # Basic brightness/contrast adjustment
             result = cv2.convertScaleAbs(image, alpha=alpha, beta=beta)
-            
-            if shadow_enhance and len(image.shape) == 3:
-                # Advanced shadow detection and enhancement
-                img_bgr = cv2.cvtColor(image, cv2.COLOR_RGB2BGR) if image.shape[2] == 3 else image
-                lab = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2LAB)
-                l_channel = lab[:,:,0]
-                
-                # Detect shadow regions (dark areas)
-                shadow_mask = l_channel < np.mean(l_channel) - np.std(l_channel) * 0.5
-                shadow_mask = shadow_mask.astype(np.uint8) * 255
-                
-                # Morphological operations to refine shadow mask
-                kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 7))
-                shadow_mask = cv2.morphologyEx(shadow_mask, cv2.MORPH_CLOSE, kernel)
-                shadow_mask = cv2.GaussianBlur(shadow_mask, (21, 21), 0)
-                
-                # Apply stronger enhancement to shadow regions
-                shadow_enhanced = cv2.convertScaleAbs(image, alpha=alpha*1.3, beta=beta*1.5)
-                
-                # Blend based on shadow mask
-                shadow_mask_norm = shadow_mask.astype(np.float32) / 255.0
-                if len(image.shape) == 3:
-                    shadow_mask_norm = np.stack([shadow_mask_norm] * 3, axis=2)
-                
-                result = (shadow_enhanced.astype(np.float32) * shadow_mask_norm + 
-                         result.astype(np.float32) * (1 - shadow_mask_norm))
-                
-                result = np.clip(result, 0, 255).astype(np.uint8)
-            
             return result
             
         except Exception as e:
             logger.error(f"Error in advanced shadow fight: {e}")
             return cv2.convertScaleAbs(image, alpha=alpha, beta=beta)
     
-    def advanced_grayscale(self, image, method='luminance'):
+    def advanced_grayscale(self, image):
         """
         Advanced grayscale conversion with different methods
         """
@@ -274,26 +221,10 @@ class ImageEnhancementManager:
             # Convert to BGR for OpenCV operations if needed
             img_bgr = cv2.cvtColor(image, cv2.COLOR_RGB2BGR) if image.shape[2] == 3 else image
             
-            if method == 'luminance':
-                # Luminance method (ITU-R BT.709)
-                gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
-            elif method == 'weighted':
-                # Custom weighted average (on RGB)
-                gray = np.average(image, axis=2, weights=[0.3, 0.59, 0.11])
-                gray = gray.astype(np.uint8)
-            elif method == 'desaturation':
-                # Desaturation method
-                gray = (np.max(image, axis=2) + np.min(image, axis=2)) / 2
-                gray = gray.astype(np.uint8)
-            else:
-                # Default OpenCV method
-                gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
+            # Convert to grayscale using OpenCV
+            gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
             
-            # Apply local contrast enhancement
-            clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
-            enhanced_gray = clahe.apply(gray)
-            
-            return enhanced_gray
+            return gray
             
         except Exception as e:
             logger.error(f"Error in advanced grayscale: {e}")
