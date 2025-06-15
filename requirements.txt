@@ -11,9 +11,7 @@ numpy==1.23.5
 realesrgan==0.3.0
 torch>=1.13.0
 torchvision>=0.14.0
-basicsr
 
-# Environment Configuration
 python-dotenv==1.0.1
 
 # Utilities
