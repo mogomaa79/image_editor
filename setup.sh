@@ -1,50 +1,56 @@
 #!/bin/bash
 
 # AI Image Editor with RealESRGAN - Setup Script
-# This script sets up the complete environment for the AI Image Editor
+# This script sets up the complete environment for the AI Image Editor using Python venv
 
 echo "🚀 Setting up AI Image Editor with RealESRGAN..."
 echo "=============================================="
 
-# Check if conda is installed
-if ! command -v conda &> /dev/null; then
-    echo "❌ Conda is not installed. Please install Anaconda or Miniconda first."
+# Check if Python 3.10+ is installed
+python_version=$(python3 --version 2>/dev/null | cut -d' ' -f2 | cut -d'.' -f1,2)
+if [[ -z "$python_version" ]]; then
+    echo "❌ Python 3 is not installed. Please install Python 3.10 or higher."
     exit 1
 fi
 
-# Create conda environment
-echo "📦 Creating conda environment 'imgapp' with Python 3.10..."
-conda create -n imgapp python=3.10 -y
+# Convert version to comparable format (e.g., 3.10 -> 310)
+version_num=$(echo $python_version | sed 's/\.//')
+if [[ $version_num -lt 310 ]]; then
+    echo "❌ Python 3.10 or higher is required. Found: $python_version"
+    exit 1
+fi
 
-# Activate environment
-echo "🔧 Activating environment..."
-source "$(conda info --base)/etc/profile.d/conda.sh"
-conda activate imgapp
+echo "✅ Found Python $python_version"
 
-# Install PyTorch and core dependencies via conda
-echo "⚡ Installing PyTorch and core dependencies..."
-conda install pytorch torchvision torchaudio -c pytorch -y
-conda install numpy opencv pillow scikit-image -c conda-forge -y
+# Remove existing virtual environment if it exists
+if [[ -d "imgapp_env" ]]; then
+    echo "🗑️ Removing existing virtual environment..."
+    rm -rf imgapp_env
+fi
 
-# Install build tools
-echo "🛠️ Installing build tools..."
-conda install -c conda-forge cython setuptools wheel -y
+# Create virtual environment
+echo "📦 Creating virtual environment 'imgapp_env'..."
+python3 -m venv imgapp_env
 
-# Install BasicSR from source
-echo "🤖 Installing BasicSR (RealESRGAN foundation)..."
-python -m pip install git+https://github.com/XPixelGroup/BasicSR@master --use-pep517
+# Activate virtual environment
+echo "🔧 Activating virtual environment..."
+source imgapp_env/bin/activate
 
-# Install RealESRGAN and related packages
-echo "🎯 Installing RealESRGAN and enhancement libraries..."
-python -m pip install facexlib gfpgan realesrgan
+# Upgrade pip
+echo "⬆️ Upgrading pip..."
+python -m pip install --upgrade pip setuptools wheel
 
-# Install Django and web framework dependencies
-echo "🌐 Installing Django and web dependencies..."
-python -m pip install Django==5.2.1 django-cors-headers==4.7.0
+# Install PyTorch first (for better dependency resolution)
+echo "⚡ Installing PyTorch and torchvision..."
+python -m pip install torch>=1.13.0 torchvision>=0.14.0 --index-url https://download.pytorch.org/whl/cpu
 
-# Install additional utilities
-echo "📚 Installing additional utilities..."
-python -m pip install tqdm requests pyyaml lmdb
+# Install BasicSR from source (required for RealESRGAN)
+echo "🤖 Installing BasicSR..."
+python -m pip install basicsr
+
+# Install other dependencies from requirements.txt
+echo "📚 Installing project dependencies..."
+python -m pip install -r requirements.txt
 
 # Run Django migrations
 echo "🗄️ Setting up database..."
@@ -56,22 +62,28 @@ echo "📁 Creating media directories..."
 mkdir -p media/uploads
 mkdir -p media/processed
 mkdir -p static
+mkdir -p temp
 
-# Download RealESRGAN model (optional)
-echo "📥 Downloading RealESRGAN model..."
+# Download RealESRGAN model if not present
+echo "📥 Checking RealESRGAN model..."
 if [ ! -f "realesr-general-x4v3.pth" ]; then
-    wget https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesr-general-x4v3.pth
-    echo "✅ Model downloaded successfully!"
+    echo "Downloading RealESRGAN model..."
+    wget -O realesr-general-x4v3.pth https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesr-general-x4v3.pth
 else
-    echo "✅ Model already exists!"
+    echo "RealESRGAN model already exists."
 fi
 
 echo ""
 echo "🎉 Setup completed successfully!"
 echo "=============================================="
-echo "To start the AI Image Editor:"
-echo "1. conda activate imgapp"
-echo "2. python manage.py runserver"
-echo "3. Open http://127.0.0.1:8000 in your browser"
+echo ""
+echo "To activate the environment:"
+echo "  source imgapp_env/bin/activate"
+echo ""
+echo "To start the development server:"
+echo "  python manage.py runserver"
+echo ""
+echo "To deactivate the environment when done:"
+echo "  deactivate"
 echo ""
 echo "🚀 Enjoy professional AI image enhancement!" 

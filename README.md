@@ -14,45 +14,79 @@ A Django web application for image processing using Real-ESRGAN and computer vis
 ### Prerequisites
 
 - Python 3.10+
-- Conda (recommended)
+- pip (Python package manager)
 
-### Installation
+### Quick Setup (Recommended)
 
-1. **Create conda environment:**
+Run the automated setup script:
+
+```bash
+chmod +x setup.sh
+./setup.sh
+```
+
+### Manual Installation
+
+1. **Create virtual environment:**
    ```bash
-   conda create -n imgapp python=3.10 -y
-   conda activate imgapp
+   python3 -m venv imgapp_env
+   source imgapp_env/bin/activate  # On Windows: imgapp_env\Scripts\activate
    ```
 
-2. **Install PyTorch:**
+2. **Upgrade pip and install PyTorch:**
    ```bash
-   # For CUDA GPU support
-   conda install pytorch torchvision pytorch-cuda=11.8 -c pytorch -c nvidia
+   python -m pip install --upgrade pip setuptools wheel
    
-   # For CPU only
-   conda install pytorch torchvision cpuonly -c pytorch
+   # For CPU only (recommended for most users)
+   python -m pip install torch>=1.13.0 torchvision>=0.14.0 --index-url https://download.pytorch.org/whl/cpu
+   
+   # For CUDA GPU support (if you have compatible GPU)
+   python -m pip install torch>=1.13.0 torchvision>=0.14.0 --index-url https://download.pytorch.org/whl/cu118
    ```
 
-3. **Install dependencies:**
+3. **Install BasicSR (RealESRGAN foundation):**
    ```bash
-   pip install -r requirements.txt
+   python -m pip install git+https://github.com/XPixelGroup/BasicSR@master --use-pep517
    ```
 
-4. **Run migrations:**
+4. **Install dependencies:**
+   ```bash
+   python -m pip install -r requirements.txt
+   ```
+
+5. **Run migrations:**
    ```bash
    python manage.py makemigrations
    python manage.py migrate
    ```
 
-5. **Start server:**
+6. **Create directories:**
+   ```bash
+   mkdir -p media/uploads media/processed static temp
+   ```
+
+7. **Start server:**
    ```bash
    python manage.py runserver
    ```
 
-6. **Open browser:**
+8. **Open browser:**
    ```
    http://127.0.0.1:8000
    ```
+
+### Activating Environment
+
+After initial setup, activate the virtual environment:
+
+```bash
+source imgapp_env/bin/activate  # On Windows: imgapp_env\Scripts\activate
+```
+
+To deactivate when done:
+```bash
+deactivate
+```
 
 ## Usage
 
