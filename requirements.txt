@@ -4,7 +4,7 @@ django-cors-headers==4.4.0
 
 # Image Processing and AI
 Pillow==10.4.0
-opencv-python-headless==4.10.0.84
+opencv-python
 numpy==1.23.5
 
 # AI Enhancement Models
