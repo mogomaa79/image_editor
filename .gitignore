@@ -111,6 +111,11 @@ env.bak/
 venv.bak/
 imgapp_env/
 
+# Virtual environments (project-specific)
+imgapp/
+venv-m1/
+venv-intel/
+
 # Spyder project settings
 .spyderproject
 .spyproject
@@ -134,10 +139,17 @@ migrations/
 staticfiles/
 static_root/
 
-# Temporary files and uploads (NEW SYSTEM)
+# Media files (uploaded and processed images)
+media/uploads/
+media/processed/
+media/temp/
+
+# Temporary files and uploads
 temp/
+tmp/
 *.tmp
 *.temp
+temporary_*/
 
 # AI Model files (keep model in repo for deployment)
 # realesr-general-x4v3.pth (commented out - we want to keep this)
@@ -182,4 +194,23 @@ htmlcov/
 
 # Production settings
 .env.production
+.env.local
 secrets.json
+
+# Package manager lock files (platform-specific installs)
+poetry.lock
+Pipfile.lock
+
+# MacOS-specific Python installations
+*.dylib
+
+# Performance profiling
+*.prof
+*.lprof
+
+# Jupyter Lab
+.jupyterlab-settings/
+
+# Local development overrides
+local_requirements.txt
+dev_settings.py
