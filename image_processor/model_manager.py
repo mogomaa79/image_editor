@@ -80,7 +80,7 @@ class ImageEnhancementManager:
             self.upsampler = None
             logger.warning("Falling back to basic OpenCV enhancement")
     
-    def ai_super_resolution(self, image, scale=2, method='advanced'):
+    def ai_super_resolution(self, image, scale=2):
         """
         AI Super-resolution using RealESRGAN with configurable scale (1-4x)
         """
@@ -104,49 +104,76 @@ class ImageEnhancementManager:
                     return image
                 return np.array(image)
             
-            # Ensure image is in BGR format for OpenCV
+            # RealESRGAN expects BGR format input
             if len(image.shape) == 3 and image.shape[2] == 3:
-                # Convert RGB to BGR if needed
-                if isinstance(image, np.ndarray) and image.dtype == np.uint8:
-                    img_bgr = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-                else:
-                    img_bgr = image
+                # Convert RGB to BGR for RealESRGAN processing
+                img_bgr = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
             else:
                 img_bgr = image
             
-            # Pre-process: Resize small images for better results
+            # Pre-process: Resize small images for better results (following original implementation)
             h, w = img_bgr.shape[:2]
-            if h < 200 and scale > 2:
-                # For small images with high scale, do initial upscaling
+            if h < 300:
+                # For small images, do initial 2x upscaling like original code
                 img_bgr = cv2.resize(img_bgr, (w * 2, h * 2), interpolation=cv2.INTER_LANCZOS4)
             
             # Apply RealESRGAN enhancement with specified scale
             output, _ = self.upsampler.enhance(img_bgr, outscale=scale)
             
-            # Post-process: Limit max size to prevent memory issues
+            # Post-process: Limit max size (following original implementation pattern)
             h, w = output.shape[:2]
-            max_size = 4000  # Increased for higher scale support
+            max_size = 3480  # Use same max size as original implementation
             
-            if h > max_size or w > max_size:
-                if h > w:
-                    new_h = max_size
-                    new_w = int(w * max_size / h)
-                else:
-                    new_w = max_size
-                    new_h = int(h * max_size / w)
-                
-                output = cv2.resize(output, (new_w, new_h), interpolation=cv2.INTER_LANCZOS4)
-                logger.info(f"Resized output from {w}x{h} to {new_w}x{new_h} to fit memory constraints")
+            if h > max_size:
+                w = int(w * max_size / h)
+                h = max_size
             
-            # Convert back to RGB for consistency
-            if len(output.shape) == 3:
-                output = cv2.cvtColor(output, cv2.COLOR_BGR2RGB)
+            if w > max_size:
+                h = int(h * max_size / w)
+                w = max_size
+            
+            output = cv2.resize(output, (w, h), interpolation=cv2.INTER_LANCZOS4)
+            logger.info(f"Resized output to {w}x{h} to fit memory constraints")
             
             logger.info(f"Successfully applied RealESRGAN with {scale}x scale")
             return output
             
         except Exception as e:
             logger.error(f"Error in RealESRGAN super-resolution: {e}")
+            return self._fallback_enhancement(image, scale)
+    
+    def _fallback_enhancement(self, image, scale=2):
+        """
+        Fallback enhancement using OpenCV when RealESRGAN is not available
+        """
+        try:
+            if isinstance(image, Image.Image):
+                image = np.array(image)
+            
+            # Convert to RGB if needed
+            if len(image.shape) == 3:
+                img = cv2.cvtColor(image, cv2.COLOR_BGR2RGB) if image.shape[2] == 3 else image
+            else:
+                img = image
+            
+            # Simple upscaling using LANCZOS interpolation
+            h, w = img.shape[:2]
+            new_h, new_w = int(h * scale), int(w * scale)
+            
+            if len(img.shape) == 3:
+                # For color images
+                result = cv2.resize(img, (new_w, new_h), interpolation=cv2.INTER_LANCZOS4)
+                # Keep in RGB format for consistency with other functions
+            else:
+                # For grayscale images
+                result = cv2.resize(img, (new_w, new_h), interpolation=cv2.INTER_LANCZOS4)
+            
+            logger.info(f"Applied fallback enhancement with {scale}x scale")
+            return result
+            
+        except Exception as e:
+            logger.error(f"Error in fallback enhancement: {e}")
+            return image
     
     def advanced_gamma_clahe(self, image, gamma=1.3, clip_limit=3.0):
         """
