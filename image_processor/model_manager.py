@@ -100,42 +100,67 @@ class ImageEnhancementManager:
             
             # If scale is 1, return original image with minimal processing
             if scale == 1:
-                if isinstance(image, np.ndarray):
-                    return image
-                return np.array(image)
+                logger.info("Scale is 1x, returning original image")
+                return image
             
-            # RealESRGAN expects BGR format input
+            # Check image size and memory constraints
+            h, w = image.shape[:2]
+            total_pixels = h * w
+            
+            # If image is too large, use fallback method
+            if total_pixels > 2000000:  # 2MP limit for RealESRGAN to prevent memory issues
+                logger.warning(f"Image too large ({h}x{w}), using fallback method")
+                return self._fallback_enhancement(image, scale)
+            
+            # Ensure we have a BGR image for RealESRGAN (it expects BGR input)
             if len(image.shape) == 3 and image.shape[2] == 3:
-                # Convert RGB to BGR for RealESRGAN processing
-                img_bgr = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+                # Input should already be BGR from utils.py conversion
+                img_bgr = image
+                logger.info(f"Using BGR image for RealESRGAN: {img_bgr.shape}")
             else:
                 img_bgr = image
+                logger.info(f"Using grayscale/single channel image: {img_bgr.shape}")
             
-            # Pre-process: Resize small images for better results (following original implementation)
-            h, w = img_bgr.shape[:2]
+            # Pre-process: Resize small images for better results
             if h < 300:
-                # For small images, do initial 2x upscaling like original code
+                # For small images, do initial 2x upscaling
                 img_bgr = cv2.resize(img_bgr, (w * 2, h * 2), interpolation=cv2.INTER_LANCZOS4)
+                h, w = img_bgr.shape[:2]
+                logger.info(f"Pre-upscaled small image to: {w}x{h}")
             
             # Apply RealESRGAN enhancement with specified scale
-            output, _ = self.upsampler.enhance(img_bgr, outscale=scale)
+            try:
+                logger.info(f"Applying RealESRGAN with scale {scale}x...")
+                output, _ = self.upsampler.enhance(img_bgr, outscale=scale)
+                logger.info(f"RealESRGAN processing completed, output shape: {output.shape}")
+            except Exception as e:
+                logger.error(f"RealESRGAN enhancement failed: {e}")
+                # Fallback to basic enhancement
+                return self._fallback_enhancement(image, scale)
             
-            # Post-process: Limit max size (following original implementation pattern)
+            # Validate output
+            if output is None:
+                logger.error("RealESRGAN returned None output")
+                return self._fallback_enhancement(image, scale)
+            
+            # Post-process: Limit max size for memory constraints
             h, w = output.shape[:2]
-            max_size = 3480  # Use same max size as original implementation
+            max_size = 2048  # Reduced from 3480 to prevent memory issues
             
-            if h > max_size:
-                w = int(w * max_size / h)
-                h = max_size
+            if h > max_size or w > max_size:
+                if h > w:
+                    new_h = max_size
+                    new_w = int(w * max_size / h)
+                else:
+                    new_w = max_size
+                    new_h = int(h * max_size / w)
+                
+                output = cv2.resize(output, (new_w, new_h), interpolation=cv2.INTER_LANCZOS4)
+                logger.info(f"Resized output to {new_w}x{new_h} to fit memory constraints")
             
-            if w > max_size:
-                h = int(h * max_size / w)
-                w = max_size
-            
-            output = cv2.resize(output, (w, h), interpolation=cv2.INTER_LANCZOS4)
-            logger.info(f"Resized output to {w}x{h} to fit memory constraints")
-            
-            logger.info(f"Successfully applied RealESRGAN with {scale}x scale")
+            # RealESRGAN returns BGR format, keep it as BGR for now
+            # The conversion to RGB will happen in utils.py
+            logger.info(f"Successfully applied RealESRGAN with {scale}x scale, output: {output.shape}")
             return output
             
         except Exception as e:

@@ -27,10 +27,16 @@ class Command(BaseCommand):
             action='store_true',
             help='Show what would be deleted without actually deleting'
         )
+        parser.add_argument(
+            '--aggressive',
+            action='store_true',
+            help='Delete all temp files regardless of database records'
+        )
 
     def handle(self, *args, **options):
         hours = options['hours']
         dry_run = options['dry_run']
+        aggressive = options['aggressive']
         
         cutoff_time = timezone.now() - timedelta(hours=hours)
         
@@ -84,7 +90,11 @@ class Command(BaseCommand):
                     file_path = os.path.join(temp_dir, filename)
                     if os.path.isfile(file_path):
                         file_age = timezone.now().timestamp() - os.path.getmtime(file_path)
-                        if file_age > (hours * 3600):  # Convert hours to seconds
+                        
+                        # For aggressive cleanup or old files
+                        should_delete = aggressive or file_age > (hours * 3600)
+                        
+                        if should_delete:
                             if dry_run:
                                 self.stdout.write(f'Would delete orphaned file: {file_path}')
                             else:
@@ -93,6 +103,25 @@ class Command(BaseCommand):
                                 logger.info(f'Deleted orphaned temporary file: {file_path}')
             except Exception as e:
                 logger.error(f'Error cleaning up temp directory: {e}')
+        
+        # Clean up broken/incomplete records (no files exist)
+        if not dry_run:
+            broken_records = TempProcessedImage.objects.all()
+            for record in broken_records:
+                files_exist = False
+                for path in [record.temp_original_path, record.temp_processed_path]:
+                    if path and os.path.exists(path):
+                        files_exist = True
+                        break
+                
+                if not files_exist:
+                    try:
+                        record.delete()
+                        deleted_records += 1
+                        logger.info(f'Deleted broken record {record.uuid} with no files')
+                    except Exception as e:
+                        errors += 1
+                        logger.error(f'Error deleting broken record {record.uuid}: {e}')
         
         # Summary
         if dry_run:
