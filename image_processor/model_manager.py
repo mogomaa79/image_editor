@@ -107,9 +107,24 @@ class ImageEnhancementManager:
             h, w = image.shape[:2]
             total_pixels = h * w
             
-            # If image is too large, use fallback method
-            if total_pixels > 2000000:  # 2MP limit for RealESRGAN to prevent memory issues
-                logger.warning(f"Image too large ({h}x{w}), using fallback method")
+            # Calculate expected output size and check memory constraints
+            output_pixels = total_pixels * (scale ** 2)
+            
+            # Dynamic memory limits based on scale factor
+            if scale == 1:
+                max_pixels = 10000000  # 10MP for 1x (no real processing)
+            elif scale == 2:
+                max_pixels = 4000000   # 4MP for 2x (8MP output max)
+            elif scale == 3:
+                max_pixels = 1500000   # 1.5MP for 3x (13.5MP output max)
+            elif scale == 4:
+                max_pixels = 1000000   # 1MP for 4x (16MP output max)
+            else:
+                max_pixels = 2000000   # Default fallback
+            
+            # Check both input and expected output size
+            if total_pixels > max_pixels or output_pixels > 20000000:  # 20MP output limit
+                logger.warning(f"Image too large for {scale}x scaling: input {h}x{w} ({total_pixels:,} pixels), expected output {output_pixels:,} pixels. Using fallback method.")
                 return self._fallback_enhancement(image, scale)
             
             # Ensure we have a BGR image for RealESRGAN (it expects BGR input)
@@ -131,10 +146,31 @@ class ImageEnhancementManager:
             # Apply RealESRGAN enhancement with specified scale
             try:
                 logger.info(f"Applying RealESRGAN with scale {scale}x...")
+                logger.info(f"Expected output dimensions: ~{h*scale}x{w*scale} ({h*scale*w*scale:,} pixels)")
+                
+                # Add memory monitoring
+                try:
+                    import psutil
+                    memory_before = psutil.virtual_memory()
+                    logger.info(f"Memory before processing: {memory_before.percent}% used")
+                except ImportError:
+                    pass
+                
                 output, _ = self.upsampler.enhance(img_bgr, outscale=scale)
-                logger.info(f"RealESRGAN processing completed, output shape: {output.shape}")
-            except Exception as e:
-                logger.error(f"RealESRGAN enhancement failed: {e}")
+                
+                if output is not None:
+                    logger.info(f"RealESRGAN processing completed, output shape: {output.shape}")
+                else:
+                    logger.error("RealESRGAN returned None output")
+                    return self._fallback_enhancement(image, scale)
+                    
+            except (RuntimeError, MemoryError, Exception) as e:
+                error_msg = str(e).lower()
+                if 'memory' in error_msg or 'cuda out of memory' in error_msg:
+                    logger.error(f"RealESRGAN enhancement failed due to memory issues: {e}")
+                    logger.info("Retrying with fallback method due to memory constraints")
+                else:
+                    logger.error(f"RealESRGAN enhancement failed: {e}")
                 # Fallback to basic enhancement
                 return self._fallback_enhancement(image, scale)
             
@@ -143,9 +179,16 @@ class ImageEnhancementManager:
                 logger.error("RealESRGAN returned None output")
                 return self._fallback_enhancement(image, scale)
             
-            # Post-process: Limit max size for memory constraints
+            # Post-process: Limit max size for memory constraints based on scale
             h, w = output.shape[:2]
-            max_size = 2048  # Reduced from 3480 to prevent memory issues
+            
+            # Dynamic max size based on scale to prevent memory issues
+            if scale <= 2:
+                max_size = 2048
+            elif scale == 3:
+                max_size = 1800  # More conservative for 3x
+            else:  # scale == 4
+                max_size = 1600  # Most conservative for 4x
             
             if h > max_size or w > max_size:
                 if h > w:
@@ -156,7 +199,7 @@ class ImageEnhancementManager:
                     new_h = int(h * max_size / w)
                 
                 output = cv2.resize(output, (new_w, new_h), interpolation=cv2.INTER_LANCZOS4)
-                logger.info(f"Resized output to {new_w}x{new_h} to fit memory constraints")
+                logger.info(f"Resized output to {new_w}x{new_h} to fit memory constraints for {scale}x scale")
             
             # RealESRGAN returns BGR format, keep it as BGR for now
             # The conversion to RGB will happen in utils.py

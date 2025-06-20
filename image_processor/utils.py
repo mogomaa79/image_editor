@@ -46,7 +46,7 @@ def process_image(image_file, mode, scale=2):
                 # Check if result is valid
                 if result is None:
                     logger.error(f"AI enhancement returned None result for scale {scale}")
-                    raise Exception("AI enhancement failed - no result returned")
+                    raise Exception(f"AI enhancement failed for {scale}x scale - likely due to memory constraints or image size. Try a lower scale factor or smaller image.")
                 
                 # Ensure result is in RGB format for PIL
                 if len(result.shape) == 3 and result.shape[2] == 3:
@@ -66,8 +66,16 @@ def process_image(image_file, mode, scale=2):
             except Exception as e:
                 logger.error(f"AI enhancement failed: {e}")
                 logger.error(f"Traceback: {traceback.format_exc()}")
-                # Fallback to original image
-                result = image_array
+                
+                # Check if it's a memory-related issue
+                error_msg = str(e).lower()
+                if 'memory' in error_msg or 'scale' in error_msg or 'too large' in error_msg:
+                    logger.warning(f"Memory constraint detected for {scale}x scale. Consider reducing image size or scale factor.")
+                    # Return None to indicate failure, let the view handle the error message
+                    return None
+                else:
+                    # Fallback to original image for other errors
+                    result = image_array
                 
         elif mode == 'gamma_clahe':
             try:

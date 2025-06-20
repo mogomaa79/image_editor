@@ -69,7 +69,16 @@ def process_image_api(request):
             # Clean up temporary file
             if os.path.exists(temp_original_path):
                 os.remove(temp_original_path)
-            return JsonResponse({'error': 'Failed to process image'}, status=500)
+            
+            # Provide specific error message based on mode and scale
+            if mode == 'ai_enhancer' and scale >= 3:
+                error_msg = f'Image too large for {scale}x AI enhancement. Try using 2x scale or reduce image size to under 1200x1200 pixels.'
+            elif mode == 'ai_enhancer':
+                error_msg = f'AI enhancement failed. Try reducing the scale factor or using a smaller image.'
+            else:
+                error_msg = 'Failed to process image. Try using a different image or processing mode.'
+                
+            return JsonResponse({'error': error_msg}, status=400)
         
         # Save processed image temporarily
         processed_ext = '.jpg'  # Always save as JPEG
