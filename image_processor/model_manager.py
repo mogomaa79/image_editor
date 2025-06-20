@@ -218,25 +218,26 @@ class ImageEnhancementManager:
             if isinstance(image, Image.Image):
                 image = np.array(image)
             
-            # Convert to RGB if needed
-            if len(image.shape) == 3:
-                img = cv2.cvtColor(image, cv2.COLOR_BGR2RGB) if image.shape[2] == 3 else image
+            # Keep image in original format (should be BGR like main method)
+            # No color space conversion needed - maintain consistency with ai_super_resolution
+            if len(image.shape) == 3 and image.shape[2] == 3:
+                # Input should already be BGR from utils.py conversion
+                img_bgr = image
+                logger.info(f"Using BGR image for fallback enhancement: {img_bgr.shape}")
             else:
-                img = image
+                img_bgr = image
+                logger.info(f"Using grayscale/single channel image: {img_bgr.shape}")
             
             # Simple upscaling using LANCZOS interpolation
-            h, w = img.shape[:2]
+            h, w = img_bgr.shape[:2]
             new_h, new_w = int(h * scale), int(w * scale)
             
-            if len(img.shape) == 3:
-                # For color images
-                result = cv2.resize(img, (new_w, new_h), interpolation=cv2.INTER_LANCZOS4)
-                # Keep in RGB format for consistency with other functions
-            else:
-                # For grayscale images
-                result = cv2.resize(img, (new_w, new_h), interpolation=cv2.INTER_LANCZOS4)
+            # Apply upscaling
+            result = cv2.resize(img_bgr, (new_w, new_h), interpolation=cv2.INTER_LANCZOS4)
             
-            logger.info(f"Applied fallback enhancement with {scale}x scale")
+            # Keep in BGR format for consistency with RealESRGAN method
+            # The conversion to RGB will happen in utils.py
+            logger.info(f"Applied fallback enhancement with {scale}x scale, output: {result.shape}")
             return result
             
         except Exception as e:
